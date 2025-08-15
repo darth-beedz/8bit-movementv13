@@ -1,5 +1,7 @@
 Stable with limited testing on v13.
 
+STILL REQUIRES LIBWRAPPER
+
 -Setup your token to be semi animated like 8bit games of old. This module allows you to set a different image for each direction (WSAD, arrow keys).
 
 -Use the convenient TokenHud setup or the Token configuration screen to pick the images.
