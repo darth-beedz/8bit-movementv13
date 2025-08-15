@@ -30,7 +30,7 @@
   ],
   "manifest": "https://raw.githubusercontent.com/darth-beedz/8bit-movementv13/main/src/module.json",
   "url": "https://github.com/darth-beedz/8bit-movementv13",
-  "download": "https://github.com/darth-beedz/8bit-movementv13/releases/download/1.0/8bit-movementv13.zip",
+  "download": "https://github.com/darth-beedz/8bit-movementv13/archive/refs/tags/1.0.zip",
   "protected": false,
   "coreTranslation": false,
   "library": false,
