@@ -1,5 +1,49 @@
 //change image titles for tooltips from Foundry API looks nicer.
 const MODULE_NAME = "8bit-movement";
+
+
+// --- 8bit-movement: smooth move + no-fade helpers ---
+const __8BIT_SWAP_DELAY_MS = 200; // delay to let movement tween start; adjust to taste
+
+function __8bit_forceOpaque(placeable) {
+  try {
+    if (!placeable) return;
+    placeable.alpha = 1;
+    if (placeable.icon) placeable.icon.alpha = 1;
+    if (placeable.mesh) placeable.mesh.alpha = 1;
+  } catch (e) {
+    console.warn("8bit-movement: forceOpaque failed", e);
+  }
+}
+
+async function __8bit_swapAfterMoveNoFade(doc, placeable, src) {
+  try {
+    if (!doc || !placeable || !src) return;
+    if (placeable.texture?.src === src) return;
+    await doc.update({ "texture.src": src }, { animate: false });
+    const kicks = [0, 16, 48, 96, 160, 240];
+    for (const t of kicks) setTimeout(() => __8bit_forceOpaque(placeable), t);
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => __8bit_forceOpaque(placeable));
+    }
+  } catch (e) {
+    console.warn("8bit-movement: swapAfterMoveNoFade failed", e);
+  }
+}
+
+/** Preview the given src on the on-canvas token (no document write, no refresh). */
+function __8bit_previewMesh(tokenId, src) {
+  try {
+    const pl = canvas?.tokens?.get(tokenId);
+    if (!pl || !src) return;
+    const tex = (typeof PIXI !== "undefined" && PIXI.Texture) ? PIXI.Texture.from(src) : null;
+    if (!tex) return;
+    if (pl.mesh) pl.mesh.texture = tex;
+    else if (pl.icon) pl.icon.texture = tex;
+    __8bit_forceOpaque(pl);
+  } catch (e) { /* ignore preview errors */ }
+}
+
 /**
  * Sets up the flags for the image paths when pressing the [+] button on the Token HUD or Token Config.
  * does some string searching to figure out if you used upper case or lower case for the direction tag on your images.
@@ -66,8 +110,14 @@ async function imageLoader(tokenId, sheet, direction) {
  * maintains a 0 rotation on SHIFT usage for tokens with the right flags.
  */
 export async function addListener() {
-    const diagonalMode = game.settings.get(MODULE_NAME, "diagonalMode");
-    Hooks.on("preUpdateToken", function changeImage(token, change) {
+      Hooks.on("refreshToken", (pl) => {
+    try {
+      const next = pl?.document?.getFlag(MODULE_NAME, "__nextTexture");
+      if (next) __8bit_previewMesh(pl.id, next);
+    } catch (_e) {}
+  });
+const diagonalMode = game.settings.get(MODULE_NAME, "diagonalMode");
+    Hooks.on("preUpdateToken", function changeImage(token, change, options) {
         if(!token.flags[MODULE_NAME]) return;
         if(!token.getFlag(MODULE_NAME, "up") &&
             !token.getFlag(MODULE_NAME, "down") &&
@@ -118,59 +168,58 @@ export async function addListener() {
             }
             if(direction === "up") {
                 if(token.texture.src === token.flags[MODULE_NAME].up) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].up);
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].up); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].up);
             }
             if(direction === "down") {
                 if(token.texture.src === token.flags[MODULE_NAME].down) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].down);
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].down); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].down);
             }
             if(direction === "left") {
                 if(token.texture.src === token.flags[MODULE_NAME].left) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].left);
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].left); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].left);
             }
             if(direction === "right") {
                 if(token.texture.src === token.flags[MODULE_NAME].right) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].right);
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].right); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].right);
             }
             if(direction === "up-left") {
                 if(token.texture.src === token.flags[MODULE_NAME].UL) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].UL);                
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].UL); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].UL);                
             }
             if(direction === "up-right") {
                 if(token.texture.src === token.flags[MODULE_NAME].UR) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].UR);                  
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].UR); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].UR);                  
             }
             if(direction === "down-left") {
                 if(token.texture.src === token.flags[MODULE_NAME].DL) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].DL);                
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].DL); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].DL);                
             }
             if(direction === "down-right") {
                 if(token.texture.src === token.flags[MODULE_NAME].DR) return;
-                foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].DR);                 
+                foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].DR); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].DR);                 
             }
         }
         else if(rotation) {
             switch(foundry.utils.getProperty(change, "rotation")){
                 case 0: 
                     if(token.texture.src === token.flags[MODULE_NAME].down) return;
-                    foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].down);
+                    foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].down); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].down);
                     break;
                 case 90: 
                     if(token.texture.src === token.flags[MODULE_NAME].left) return;
-                    foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].left);
+                    foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].left); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].left);
                     break;
                 case 180: 
                     if(token.texture.src === token.flags[MODULE_NAME].up) return;
-                    foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].up);
+                    foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].up); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].up);
                     break;
                 case 270: 
                     if(token.texture.src === token.flags[MODULE_NAME].right) return;
-                    foundry.utils.setProperty(change, "texture.src", token.flags[MODULE_NAME].right);
+                    foundry.utils.setProperty(change, "flags.8bit-movement.__nextTexture", token.flags[MODULE_NAME].right); __8bit_previewMesh(token.id, token.flags[MODULE_NAME].right);
                     break;
                 default: break;
             }
-        }
-    });
+        }});
 }
 
 /**
@@ -283,8 +332,8 @@ export async function createConfigButtons(sheet) {
     const token = sheet.object; // for some reason when getting it from the Config Sheet you get the TokenDocument!
     if(token.documentName !== "Token") return; // for now prevents it from running on the prototype token hud.
     if(!token.flags.hasOwnProperty(MODULE_NAME)) {
-        sheet.element.find(`.window-content .tab[data-tab="${tab}"]`).append(`<div class="form-group movement-form-group"><label class="movement-label">${game.i18n.format("8BITMOVEMENT.activate_label")}</label><div class="form-fields"><a class="movement-settings activate"><i class="far fa-plus-square" title="${game.i18n.format("8BITMOVEMENT.activate")}"></i></a></div></div>`);
-        sheet.element.find(`.movement-settings.activate`).click(async function(){ 
+        $(sheet.element).find(`.window-content .tab[data-tab="${tab}"]`).append(`<div class="form-group movement-form-group"><label class="movement-label">${game.i18n.format("8BITMOVEMENT.activate_label")}</label><div class="form-fields"><a class="movement-settings activate"><i class="far fa-plus-square" title="${game.i18n.format("8BITMOVEMENT.activate")}"></i></a></div></div>`);
+        $(sheet.element).find(`.movement-settings.activate`).click(async function(){ 
             await initializeMovement(token.id);
             sheet.render(); 
         });
@@ -295,47 +344,47 @@ export async function createConfigButtons(sheet) {
         const leftImage = token.getFlag(MODULE_NAME, "left");
         const rightImage = token.getFlag(MODULE_NAME, "right");
         if(token.getFlag(MODULE_NAME, "locked")) {
-            sheet.element.find(`.window-content .tab[data-tab="${tab}"]`).append(`<div class="form-group movement-form-group"><label class="movement-label">${game.i18n.format("8BITMOVEMENT.unlock")}: </label><div class="form-fields"><a class="movement-settings unlock"><i class="fas fa-lock" title="${game.i18n.format("8BITMOVEMENT.unlock")}"></i></a></div></div>`);
-            sheet.element.find(`.movement-settings.unlock`).click(async function(){
+            $(sheet.element).find(`.window-content .tab[data-tab="${tab}"]`).append(`<div class="form-group movement-form-group"><label class="movement-label">${game.i18n.format("8BITMOVEMENT.unlock")}: </label><div class="form-fields"><a class="movement-settings unlock"><i class="fas fa-lock" title="${game.i18n.format("8BITMOVEMENT.unlock")}"></i></a></div></div>`);
+            $(sheet.element).find(`.movement-settings.unlock`).click(async function(){
                 await token.setFlag(MODULE_NAME, "locked", false);
                 sheet.render();
             });
         }
         else {
-            sheet.element.find(`.window-content .tab[data-tab="${tab}"]`).append(`<div class="form-group movement-form-group"><label class="movement-label">${game.i18n.format("8BITMOVEMENT.settings")}</label><div class="form-fields"></div></div>`);
-            sheet.element.find(`.form-group.movement-form-group .form-fields`).append(`<a class="movement-settings lock"><i class="fas fa-lock-open" title="${game.i18n.format("8BITMOVEMENT.lock")}"></i></a>
+            $(sheet.element).find(`.window-content .tab[data-tab="${tab}"]`).append(`<div class="form-group movement-form-group"><label class="movement-label">${game.i18n.format("8BITMOVEMENT.settings")}</label><div class="form-fields"></div></div>`);
+            $(sheet.element).find(`.form-group.movement-form-group .form-fields`).append(`<a class="movement-settings lock"><i class="fas fa-lock-open" title="${game.i18n.format("8BITMOVEMENT.lock")}"></i></a>
                                                                                         <a class="movement-settings up-image"><img src="${upImage}" title="${game.i18n.format("8BITMOVEMENT.up")}"></a>
                                                                                         <a class="movement-settings down-image"><img src="${downImage}" title="${game.i18n.format("8BITMOVEMENT.down")}"></a>
                                                                                         <a class="movement-settings left-image"><img src="${leftImage}" title="${game.i18n.format("8BITMOVEMENT.left")}"></a>
                                                                                         <a class="movement-settings right-image"><img src="${rightImage}" title="${game.i18n.format("8BITMOVEMENT.right")}"></a>
                                                                                         `);
-            sheet.element.find(`.movement-settings.up-image`).click(async function(){
+            $(sheet.element).find(`.movement-settings.up-image`).click(async function(){
                 await imageLoader(token.id, sheet, "up");
             });
-            sheet.element.find(`.movement-settings.down-image`).click(async function(){
+            $(sheet.element).find(`.movement-settings.down-image`).click(async function(){
                 await imageLoader(token.id, sheet, "down");
             });
-            sheet.element.find(`.movement-settings.left-image`).click(async function(){
+            $(sheet.element).find(`.movement-settings.left-image`).click(async function(){
                 await imageLoader(token.id, sheet, "left");
             });
-            sheet.element.find(`.movement-settings.right-image`).click(async function(){
+            $(sheet.element).find(`.movement-settings.right-image`).click(async function(){
                 await imageLoader(token.id, sheet, "right");
             });
-            sheet.element.find(`.movement-settings.lock`).click(async function(){
+            $(sheet.element).find(`.movement-settings.lock`).click(async function(){
                 await token.setFlag(MODULE_NAME, "locked", true);
                 sheet.render();
             });
             if(token.getFlag(MODULE_NAME, "set")){
-                sheet.element.find(`.form-group.movement-form-group .form-fields`).append(`<a class="movement-settings remove"><i class="fas fa-times" title="${game.i18n.format("8BITMOVEMENT.delete")}"></i></a>`);
-                sheet.element.find(`.movement-settings.remove`).click(async function(){
+                $(sheet.element).find(`.form-group.movement-form-group .form-fields`).append(`<a class="movement-settings remove"><i class="fas fa-times" title="${game.i18n.format("8BITMOVEMENT.delete")}"></i></a>`);
+                $(sheet.element).find(`.movement-settings.remove`).click(async function(){
                     await game.actors.get(token.actor.id).update({"prototypeToken.flags.-=8bit-movement": null, "prototypeToken.img": downImage, "prototypeToken.lockRotation": false});
                     await token.update({"flags.-=8bit-movement": null, lockRotation: false, rotation: 0});
                     sheet.render();
                 });
             }
             else {
-                sheet.element.find(`.form-group.movement-form-group .form-fields`).append(`<a class="movement-settings save" ><i class="fas fa-address-card" title="${game.i18n.format("8BITMOVEMENT.save")}"></i></a>`);
-                sheet.element.find(`.movement-settings.save`).click(async function(){
+                $(sheet.element).find(`.form-group.movement-form-group .form-fields`).append(`<a class="movement-settings save" ><i class="fas fa-address-card" title="${game.i18n.format("8BITMOVEMENT.save")}"></i></a>`);
+                $(sheet.element).find(`.movement-settings.save`).click(async function(){
                     await game.actors.get(token.actor.id).update({"prototypeToken.flags.8bit-movement": {up: upImage, down: downImage, left: leftImage, right: rightImage, set: true}, "prototypeToken.img": downImage, "prototypeToken.lockRotation": true});
                     await token.setFlag(MODULE_NAME, "set", true);
                     sheet.render();
@@ -345,3 +394,48 @@ export async function createConfigButtons(sheet) {
     }
     sheet.element.height("auto");
 }
+
+// Ensure no lingering fade/opacity after animated movement completes
+
+// Post-update: do the direction swap AFTER the move has begun, to keep movement smooth.
+Hooks.on("updateToken", async (doc, changes, options, userId) => {
+  try {
+    const token = canvas?.tokens?.get(doc.id);
+    if (!token) return;
+
+    // Transient flag from preUpdateToken
+    const next = (changes?.flags && changes.flags["8bit-movement"] && changes.flags["8bit-movement"].__nextTexture)
+                 || doc.getFlag("8bit-movement", "__nextTexture");
+
+    // Debounce persistence until movement fully settles (prevents teleport on drawn paths)
+    if (next || ("x" in changes) || ("y" in changes)) {
+      const prev = __8bitPersistTimers.get(doc.id);
+      if (prev) clearTimeout(prev);
+      const handle = setTimeout(async () => {
+        try {
+          const pending = doc.getFlag("8bit-movement", "__nextTexture");
+          if (pending) {
+            await doc.update({ "texture.src": pending, "flags.8bit-movement.-=__nextTexture": null }, { animate: false });
+          }
+          const tk = canvas?.tokens?.get(doc.id);
+          if (tk) {
+            const kicks = [0, 48, 120, 240];
+            for (const t of kicks) setTimeout(() => __8bit_forceOpaque(tk), t);
+          }
+        } catch (_e) {}
+        __8bitPersistTimers.delete(doc.id);
+      }, 800);
+      __8bitPersistTimers.set(doc.id, handle);
+    }
+
+    // Also keep opacity solid during any movement frame
+    const movedNow = ("x" in changes) || ("y" in changes);
+    const swapped = !!next || (changes?.texture && ("src" in changes.texture));
+    if (movedNow || swapped) {
+      const kicks = [0, 48, 120, 240];
+      for (const t of kicks) setTimeout(() => __8bit_forceOpaque(token), t);
+    }
+  } catch (e) {
+    console.warn("8bit-movement: post-update handler failed", e);
+  }
+});

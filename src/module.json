@@ -9,13 +9,10 @@
       "discord": "muhahahahe"
     }
   ],
-  "version": "1.2.2",
-  "minimumCoreVersion": "9",
-  "compatibleCoreVersion": "12",
+  "version": "1.3.01",
   "compatibility": {
-    "minimum": "9",
-    "verified": "12",
-    "maximum": "12"
+    "minimum": "10",
+    "verified": "13"
   },
   "scripts": [],
   "esmodules": [
@@ -31,20 +28,12 @@
       "path": "lang/en.json"
     }
   ],
-  "dependencies": [
-    {
-      "name": "lib-wrapper",
-      "type": "module",
-      "manifest": "https://github.com/ruipin/fvtt-lib-wrapper/releases/latest/download/module.json",
-      "compatibility": {
-        "minimum": "12"
-      }
-    }
-  ],
   "manifest": "https://raw.githubusercontent.com/muhahahahe/8bit-movement/main/src/module.json",
   "url": "https://github.com/muhahahahe/8bit-movement",
   "download": "https://github.com/muhahahahe/8bit-movement/releases/download/1.2.2/8bit-movement_1.2.2.zip",
   "protected": false,
   "coreTranslation": false,
-  "library": false
+  "library": false,
+  "relationships": {
+  }
 }
